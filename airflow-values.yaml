@@ -1,0 +1,37 @@
+executor: "KubernetesExecutor"
+
+# Disable Redis and Flower as they are Celery specific
+redis:
+  enabled: false
+flower:
+  enabled: false
+
+# Enable Ingress for Airflow UI
+ingress:
+  web:
+    enabled: true
+    ingressClassName: "nginx"
+    hosts:
+      - name: "airflow.mlops.local"
+        tls:
+          enabled: false
+
+# Environment Variables needed for MinIO and MLflow
+env:
+  - name: "MLFLOW_S3_ENDPOINT_URL"
+    value: "http://minio.mlops-infra.svc.cluster.local:9000"
+  - name: "AWS_ACCESS_KEY_ID"
+    value: "minioadmin"
+  - name: "AWS_SECRET_ACCESS_KEY"
+    value: "minioadmin123"
+  - name: "MLFLOW_TRACKING_URI"
+    value: "http://mlflow.mlops-tracking.svc.cluster.local"
+
+# Example DAGs
+dags:
+  gitSync:
+    enabled: false
+
+# PostgreSQL configuration
+postgresql:
+  enabled: true
