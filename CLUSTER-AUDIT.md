@@ -113,20 +113,28 @@
 
 ## ⚠️ Проблемы (требуют внимания)
 
-### 1. VictoriaMetrics operator — CrashLoopBackOff (критично)
-`vm-stack-victoria-metrics-operator` — **7758 рестартов**. Логи:
+### 1. VictoriaMetrics operator — CrashLoopBackOff → ✅ РЕШЕНО (2026-07-03)
+Было: `vm-stack-victoria-metrics-operator` — **7763 рестарта**. Фатальный краш:
 ```
-error setup: cannot setup manager: cannot start controller manager:
+cannot setup manager: cannot start controller manager:
 failed to wait for scrapeconfig caches to sync kind source:
 *v1alpha1.ScrapeConfig: timed out waiting for cache to be synced for Kind *v1alpha1.ScrapeConfig
 ```
-**Причина:** оператор не может синхронизировать кэш CRD `ScrapeConfig` (`operator.victoriametrics.com/v1alpha1`). Вероятно CRD отсутствует/устарел, либо не хватает RBAC на watch этого ресурса.
-**Проверить:**
+**Первопричина:** оператор регистрировал informer на Prometheus-operator CRD `ScrapeConfig` (`monitoring.coreos.com/v1alpha1`), которого в кластере нет → cache sync timeout → exit 1. Prometheus-converter включён по дефолту чарта, но Prometheus-CRD не установлены.
+
+**Решение (через Helm, закреплено в релизе):**
 ```bash
-kubectl get crd | grep scrapeconfig
-kubectl get clusterrole -o yaml | grep -A5 scrapeconfig
+helm upgrade vm-stack vm/victoria-metrics-k8s-stack --version 0.76.0 -n monitoring \
+  --reuse-values \
+  --set victoria-metrics-operator.operator.disable_prometheus_converter=true
 ```
-**Итог:** метрики частично собираются (vmsingle/vmagent живы), но оператор не примиряет конфиги. Динамические изменения мониторинга не применяются.
+Chart раскрывает флаг в гранулярные env: `VM_ENABLEDPROMETHEUSCONVERTER_SCRAPECONFIG=false` (+ PODMONITOR/PROBE/PROMETHEUSRULE/ALERTMANAGERCONFIG/SERVICESCRAPE). Оператор перестаёт watch-ить отсутствующие Prometheus-CRD.
+
+> ⚠️ Ключевой урок: в этой версии оператора converter управляется **per-CRD** переменными `VM_ENABLEDPROMETHEUSCONVERTER_<TYPE>`, а НЕ общим `VM_ENABLEDPROMETHEUSCONVERTER`. Ручной патч общего флага не работает — только per-type или chart-флаг.
+
+Попутно: удалён сиротский CRD `servicemonitors.monitoring.coreos.com`; в `dcgm-exporter` helm выставлено `serviceMonitor.enabled=false` (метрики GPU идут через нативный `vmservicescrape/dcgm-exporter`).
+
+**Статус после фикса:** RESTARTS=0, uptime стабилен, 14 `vmservicescrape` operational, GPU-метрики живы.
 
 ### 2. Airflow без DAG-ов
 Поды Airflow здоровы (api-server, scheduler, dag-processor, triggerer, statsd, postgresql), но:

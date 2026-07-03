@@ -1,0 +1,42 @@
+# MLflow — обучающая станция (не prod).
+# Данные сохраняются во внешних сервисах: Postgres (mlops-infra) + MinIO бакет mlflow-artifacts.
+#
+# Фикс Host-header (DNS rebinding 403 для svc-адреса):
+#   log.enabled: false        -> chart НЕ добавляет --gunicorn-opts -> MLflow идёт на default uvicorn
+#   extraArgs.allowedHosts "*" -> uvicorn принимает любой Host (для лабы ок; в prod — явный список)
+# Без этого allowed-hosts несовместим с gunicorn, и DAG по svc-адресу получал 403.
+
+backendStore:
+  postgres:
+    enabled: true
+    host: postgresql.mlops-infra.svc.cluster.local
+    port: 5432
+    database: mlflow
+    user: mlflow
+    password: mlflow123
+
+artifactRoot:
+  s3:
+    enabled: true
+    bucket: mlflow-artifacts
+    awsAccessKeyId: minioadmin
+    awsSecretAccessKey: minioadmin123
+
+extraEnvVars:
+  MLFLOW_S3_ENDPOINT_URL: http://minio.mlops-infra.svc.cluster.local:9000
+
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: mlflow.mlops.local
+      paths:
+        - path: /
+          pathType: Prefix
+
+# --- фикс ---
+log:
+  enabled: false
+
+extraArgs:
+  allowedHosts: "*"
