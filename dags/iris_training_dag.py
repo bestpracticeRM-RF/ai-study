@@ -43,15 +43,22 @@ def iris_training_pipeline():
 
     @task.virtualenv(requirements=PIP_REQS, system_site_packages=False)
     def train_and_log(cfg: dict) -> dict:
-        """Обучить LogisticRegression на Iris, залогировать run + модель в MLflow."""
+        """Обучить LogisticRegression на Iris, залогировать run + модель в MLflow.
+
+        ВАЖНО: @task.virtualenv выполняет функцию в изолированном subprocess —
+        глобали модуля (EXPERIMENT_NAME и т.п.) недоступны. Всё нужное объявляем
+        внутри функции.
+        """
         import mlflow
         from mlflow.models.signature import infer_signature
         from sklearn.datasets import load_iris
         from sklearn.linear_model import LogisticRegression
         from sklearn.model_selection import train_test_split
 
+        experiment_name = "Airflow_Iris_Pipeline"
+
         mlflow.set_tracking_uri(cfg["tracking_uri"])
-        mlflow.set_experiment(EXPERIMENT_NAME)
+        mlflow.set_experiment(experiment_name)
 
         X, y = load_iris(return_X_y=True)
         X_tr, X_te, y_tr, y_te = train_test_split(
