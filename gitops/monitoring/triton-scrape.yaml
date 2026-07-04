@@ -1,0 +1,15 @@
+# Скрейп метрик Triton (nv_inference_*) в VictoriaMetrics.
+# Triton отдаёт Prometheus-метрики на :8002/metrics.
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMServiceScrape
+metadata:
+  name: triton
+  namespace: mlops-serving
+spec:
+  selector:
+    matchLabels:
+      app: triton
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 15s

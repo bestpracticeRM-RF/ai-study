@@ -1,0 +1,73 @@
+# Dashboard-as-code: sidecar Grafana (grafana-sc-dashboard) следит за ConfigMap
+# с лейблом grafana_dashboard="1" в ns monitoring и подхватывает JSON автоматически.
+# Правка дашборда = правка этого файла + git push (+ Argo sync). GUI не нужен.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dashboard-gpu-mlops
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  gpu-mlops.json: |
+    {
+      "title": "GPU / MLOps (as-code)",
+      "uid": "gpu-mlops",
+      "tags": ["mlops", "gpu", "as-code"],
+      "timezone": "browser",
+      "refresh": "30s",
+      "time": { "from": "now-3h", "to": "now" },
+      "panels": [
+        { "type": "row", "title": "GPU — RTX 5070 Ti (DCGM)", "gridPos": {"h":1,"w":24,"x":0,"y":0} },
+        {
+          "type": "timeseries", "title": "GPU Utilization %",
+          "gridPos": {"h":8,"w":12,"x":0,"y":1},
+          "fieldConfig": {"defaults": {"unit": "percent", "max": 100, "min": 0}},
+          "targets": [{"expr": "DCGM_FI_DEV_GPU_UTIL", "legendFormat": "util"}]
+        },
+        {
+          "type": "timeseries", "title": "VRAM Used (MiB)",
+          "gridPos": {"h":8,"w":12,"x":12,"y":1},
+          "fieldConfig": {"defaults": {"unit": "mbytes"}},
+          "targets": [{"expr": "DCGM_FI_DEV_FB_USED", "legendFormat": "used"},
+                      {"expr": "DCGM_FI_DEV_FB_FREE", "legendFormat": "free"}]
+        },
+        {
+          "type": "timeseries", "title": "GPU Temp °C",
+          "gridPos": {"h":8,"w":12,"x":0,"y":9},
+          "fieldConfig": {"defaults": {"unit": "celsius"}},
+          "targets": [{"expr": "DCGM_FI_DEV_GPU_TEMP", "legendFormat": "temp"}]
+        },
+        {
+          "type": "timeseries", "title": "Power (W)",
+          "gridPos": {"h":8,"w":12,"x":12,"y":9},
+          "fieldConfig": {"defaults": {"unit": "watt"}},
+          "targets": [{"expr": "DCGM_FI_DEV_POWER_USAGE", "legendFormat": "power"}]
+        },
+        { "type": "row", "title": "Triton Inference", "gridPos": {"h":1,"w":24,"x":0,"y":17} },
+        {
+          "type": "timeseries", "title": "Inference req/s (by model)",
+          "gridPos": {"h":8,"w":12,"x":0,"y":18},
+          "fieldConfig": {"defaults": {"unit": "reqps"}},
+          "targets": [{"expr": "sum(rate(nv_inference_request_success[5m])) by (model)", "legendFormat": "{{model}}"}]
+        },
+        {
+          "type": "timeseries", "title": "Avg latency ms (by model)",
+          "gridPos": {"h":8,"w":12,"x":12,"y":18},
+          "fieldConfig": {"defaults": {"unit": "ms"}},
+          "targets": [{"expr": "sum(rate(nv_inference_request_duration_us[5m])) by (model) / sum(rate(nv_inference_exec_count[5m])) by (model) / 1000", "legendFormat": "{{model}}"}]
+        },
+        {
+          "type": "stat", "title": "Модели READY",
+          "gridPos": {"h":6,"w":12,"x":0,"y":26},
+          "targets": [{"expr": "count(nv_model_ready_state == 1) or vector(0)"}]
+        },
+        {
+          "type": "timeseries", "title": "Queue time ms (by model)",
+          "gridPos": {"h":6,"w":12,"x":12,"y":26},
+          "fieldConfig": {"defaults": {"unit": "ms"}},
+          "targets": [{"expr": "sum(rate(nv_inference_queue_duration_us[5m])) by (model) / sum(rate(nv_inference_exec_count[5m])) by (model) / 1000", "legendFormat": "{{model}}"}]
+        }
+      ],
+      "schemaVersion": 39
+    }
