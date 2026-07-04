@@ -1,12 +1,12 @@
+# Airflow — обучающая станция. Паролей в файле НЕТ (можно в git).
+# MinIO-креды в task-поды приходят из k8s Secret airflow-minio-creds (создаёт ESO из Vault).
 executor: "KubernetesExecutor"
 
-# Disable Redis and Flower as they are Celery specific
 redis:
   enabled: false
 flower:
   enabled: false
 
-# Enable Ingress for Airflow UI
 ingress:
   web:
     enabled: true
@@ -16,22 +16,31 @@ ingress:
         tls:
           enabled: false
 
-# Environment Variables needed for MinIO and MLflow
+# Несекретные env
 env:
   - name: "MLFLOW_S3_ENDPOINT_URL"
     value: "http://minio.mlops-infra.svc.cluster.local:9000"
-  - name: "AWS_ACCESS_KEY_ID"
-    value: "minioadmin"
-  - name: "AWS_SECRET_ACCESS_KEY"
-    value: "minioadmin123"
   - name: "MLFLOW_TRACKING_URI"
     value: "http://mlflow.mlops-tracking.svc.cluster.local"
 
-# Example DAGs
+# Секретные env — из ESO-секрета (Vault: secret/mlops/minio)
+secret:
+  - envName: "AWS_ACCESS_KEY_ID"
+    secretName: "airflow-minio-creds"
+    secretKey: "AWS_ACCESS_KEY_ID"
+  - envName: "AWS_SECRET_ACCESS_KEY"
+    secretName: "airflow-minio-creds"
+    secretKey: "AWS_SECRET_ACCESS_KEY"
+
+# DAG-и из Git (было включено через --set, теперь зафиксировано в файле)
 dags:
   gitSync:
-    enabled: false
+    enabled: true
+    repo: https://github.com/bestpracticeRM-RF/ai-study.git
+    branch: main
+    subPath: dags
+    period: 30s
 
-# PostgreSQL configuration
+# Встроенный Postgres чарта (пароль генерит чарт сам, в values его нет)
 postgresql:
   enabled: true

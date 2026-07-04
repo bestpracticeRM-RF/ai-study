@@ -1,0 +1,27 @@
+# Argo CD Application: MinIO (helm chart + values из git, секретов в values нет).
+# Multi-source: chart из helm-репо, values-файл из нашего репо ($values).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: minio
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://charts.min.io/
+      chart: minio
+      targetRevision: 5.4.0
+      helm:
+        releaseName: minio   # совпадает с существующим helm-релизом -> бесшовный adoption
+        valueFiles:
+          - $values/minio-values.yaml
+    - repoURL: https://github.com/bestpracticeRM-RF/ai-study.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: mlops-infra
+  syncPolicy:
+    automated:
+      prune: false     # осторожно со stateful: ничего не удаляем автоматически
+      selfHeal: true

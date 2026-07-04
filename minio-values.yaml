@@ -1,0 +1,8 @@
+# MinIO — креды НЕ здесь: existingSecret "minio-root" создаёт ESO из Vault (secret/mlops/minio).
+mode: standalone
+existingSecret: minio-root
+persistence:
+  size: 20Gi
+resources:
+  requests:
+    memory: 512Mi
