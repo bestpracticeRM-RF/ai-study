@@ -1,0 +1,30 @@
+# HashiCorp Vault — обучающая станция (не prod).
+# standalone (не dev!): данные в PVC, переживает рестарты; unseal вручную.
+# Секретов в файле нет — коммитится в git.
+server:
+  standalone:
+    enabled: true
+    config: |
+      ui = true
+      listener "tcp" {
+        address     = "[::]:8200"
+        cluster_address = "[::]:8201"
+        tls_disable = 1        # лаба; в prod — TLS обязателен
+      }
+      storage "file" {
+        path = "/vault/data"
+      }
+  dataStorage:
+    enabled: true
+    size: 4Gi
+    storageClass: local-path
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hosts:
+      - host: vault.mlops.local
+        paths: ["/"]
+ui:
+  enabled: true
+injector:
+  enabled: false   # сайдкар-инжектор не нужен: доставка через ESO

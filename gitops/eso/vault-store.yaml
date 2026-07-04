@@ -1,0 +1,43 @@
+# ESO <-> Vault. Токен НЕ здесь — создаётся вне git:
+#   kubectl create secret generic vault-eso-token -n external-secrets \
+#     --from-literal=token=<hvs.... токен с policy eso-read>
+apiVersion: external-secrets.io/v1
+kind: ClusterSecretStore
+metadata:
+  name: vault
+spec:
+  provider:
+    vault:
+      server: http://vault.vault.svc.cluster.local:8200
+      path: secret        # kv-v2 mount
+      version: v2
+      auth:
+        tokenSecretRef:
+          name: vault-eso-token
+          namespace: external-secrets
+          key: token
+---
+# minio-creds для Triton — теперь из Vault (secret/mlops/minio)
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: minio-creds
+  namespace: mlops-serving
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: vault
+  target:
+    name: minio-creds
+    creationPolicy: Owner
+    template:
+      data:
+        AWS_ACCESS_KEY_ID: "{{ .access_key }}"
+        AWS_SECRET_ACCESS_KEY: "{{ .secret_key }}"
+        AWS_DEFAULT_REGION: us-east-1
+  data:
+    - secretKey: access_key
+      remoteRef: { key: mlops/minio, property: access_key }
+    - secretKey: secret_key
+      remoteRef: { key: mlops/minio, property: secret_key }
