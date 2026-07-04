@@ -16,3 +16,6 @@ serving/model_repository/**/*.onnx
 
 # real values с кредами — вне git (есть *.example.yaml)
 mlflow-values.yaml
+
+# локальные доступы с паролями
+docs/ACCESS-local.md

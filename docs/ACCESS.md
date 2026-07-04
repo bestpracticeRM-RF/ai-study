@@ -62,3 +62,10 @@ kubectl exec -n vault vault-0 -- vault operator unseal \
    commit+push → Argo CD UI → смотри как приедет само.
 5. **Секреты**: Vault UI → поменяй secret_key MinIO → смотри как ESO обновит
    `kubectl get secret -n mlops-infra minio-root -o yaml` (после refresh).
+
+---
+
+## Быстрый доступ (пароли)
+
+Реальные пароли — в **`docs/ACCESS-local.md`** (локальный файл, в `.gitignore`, в репо не попадает).
+Если файла нет/устарел — перегенерировать командами из раздела «Команды для паролей» выше.
