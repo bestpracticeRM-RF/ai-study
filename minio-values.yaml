@@ -6,3 +6,10 @@ persistence:
 resources:
   requests:
     memory: 512Mi
+
+# Веб-консоль MinIO (логин = rootUser/rootPassword из Vault)
+consoleIngress:
+  enabled: true
+  ingressClassName: nginx
+  hosts:
+    - console.minio.mlops.local
