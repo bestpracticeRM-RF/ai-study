@@ -69,6 +69,6 @@ kubectl get secret minio-creds -n mlops-serving          # существует,
 
 ## Долг / следующие шаги
 - Перевести mlflow/airflow/minio на секреты из ESO (убрать пароли из values) → потом в Argo CD.
-- Сменить пароль MinIO (`minioadmin123` засвечен в публичной git-истории) — теперь это просто.
+- Сменить пароль MinIO (`<REDACTED>` засвечен в публичной git-истории) — теперь это просто.
 - Kubernetes-auth для ESO вместо статичного токена (по TTL истечёт через 32 дня).
 - Auto-unseal или задокументированный runbook на рестарт Vault.
