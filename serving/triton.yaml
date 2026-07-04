@@ -1,0 +1,85 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mlops-serving
+---
+# Secret minio-creds создаётся ВНЕ git (креды не коммитим):
+#   kubectl create secret generic minio-creds -n mlops-serving \
+#     --from-literal=AWS_ACCESS_KEY_ID=<key> \
+#     --from-literal=AWS_SECRET_ACCESS_KEY=<secret> \
+#     --from-literal=AWS_DEFAULT_REGION=us-east-1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: triton
+  namespace: mlops-serving
+  labels: { app: triton }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: triton }
+  template:
+    metadata:
+      labels: { app: triton }
+    spec:
+      runtimeClassName: nvidia
+      containers:
+        - name: triton
+          image: nvcr.io/nvidia/tritonserver:25.06-py3
+          args:
+            - tritonserver
+            - --model-repository=s3://http://minio.mlops-infra.svc.cluster.local:9000/triton-models
+            - --model-control-mode=none
+            - --log-verbose=1
+          envFrom:
+            - secretRef: { name: minio-creds }
+          ports:
+            - { name: http,    containerPort: 8000 }
+            - { name: grpc,    containerPort: 8001 }
+            - { name: metrics, containerPort: 8002 }
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+          readinessProbe:
+            httpGet: { path: /v2/health/ready, port: 8000 }
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 30
+          livenessProbe:
+            httpGet: { path: /v2/health/live, port: 8000 }
+            initialDelaySeconds: 20
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: triton
+  namespace: mlops-serving
+  labels: { app: triton }
+spec:
+  selector: { app: triton }
+  ports:
+    - { name: http,    port: 8000, targetPort: 8000 }
+    - { name: grpc,    port: 8001, targetPort: 8001 }
+    - { name: metrics, port: 8002, targetPort: 8002 }
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: triton
+  namespace: mlops-serving
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: triton.mlops.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: triton
+                port: { number: 8000 }

@@ -147,7 +147,7 @@ Airflow = «пустой движок». Следующий шаг Фазы 2 = 
 В `test_mlflow.py` и `airflow-values.yaml` креды захардкожены:
 ```
 AWS_ACCESS_KEY_ID = "minioadmin"
-AWS_SECRET_ACCESS_KEY = "minioadmin123"
+AWS_SECRET_ACCESS_KEY = "<REDACTED>"
 ```
 Попадают в Git-историю. Противоречит `agent.md` (требование ESO + Vault/Lockbox).
 **Fix:** вынести в Kubernetes Secret / External Secrets Operator; сменить дефолтные креды.

@@ -118,6 +118,6 @@ kubectl exec -n mlops-pipelines deploy/airflow-scheduler -c scheduler -- \
 | `CLUSTER-AUDIT.md` | аудит кластера + история фиксов |
 
 ## Долг (не блокирует, но стоит закрыть)
-- Секреты (`minioadmin123`, `mlflow123`) — в открытом виде в values/коде. Вынести в K8s Secret / External Secrets Operator.
+- Секреты (`<REDACTED>`, `<REDACTED>`) — в открытом виде в values/коде. Вынести в K8s Secret / External Secrets Operator.
 - venv-install 10 мин на run — собрать образ с mlflow+sklearn, перейти на `KubernetesPodOperator`.
 - Зафиксировать gitSync-параметры Airflow и фиксы в Git-values (для Argo CD GitOps).

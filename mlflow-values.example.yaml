@@ -13,14 +13,14 @@ backendStore:
     port: 5432
     database: mlflow
     user: mlflow
-    password: mlflow123
+    password: <POSTGRES_PASSWORD>
 
 artifactRoot:
   s3:
     enabled: true
     bucket: mlflow-artifacts
-    awsAccessKeyId: minioadmin
-    awsSecretAccessKey: minioadmin123
+    awsAccessKeyId: <MINIO_ACCESS_KEY>
+    awsSecretAccessKey: <MINIO_SECRET_KEY>
 
 extraEnvVars:
   MLFLOW_S3_ENDPOINT_URL: http://minio.mlops-infra.svc.cluster.local:9000
