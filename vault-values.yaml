@@ -6,6 +6,9 @@ server:
     enabled: true
     config: |
       ui = true
+      # лаба: длинные токены (дефолтный потолок 768h). ESO-токен живёт годы.
+      max_lease_ttl     = "87600h"   # 10 лет
+      default_lease_ttl = "8760h"    # 1 год
       listener "tcp" {
         address     = "[::]:8200"
         cluster_address = "[::]:8201"
