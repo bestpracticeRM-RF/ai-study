@@ -1,0 +1,25 @@
+# Argo CD Application: Triton serving из этого же репо.
+# Bootstrap (один раз): kubectl apply -f gitops/apps/triton.yaml
+# Дальше цикл GitOps: правка serving/triton.yaml -> git push -> Argo сам синкает.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: triton
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/bestpracticeRM-RF/ai-study.git
+    targetRevision: main
+    path: serving
+    directory:
+      include: "triton.yaml"   # в serving/ есть .py/.md — Argo берёт только манифест
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: mlops-serving
+  syncPolicy:
+    automated:
+      prune: true      # удалил из git -> удалится из кластера
+      selfHeal: true   # ручной kubectl-дрейф откатывается к git
+    syncOptions:
+      - CreateNamespace=false   # namespace объявлен в самом манифесте
