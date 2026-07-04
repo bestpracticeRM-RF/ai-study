@@ -9,7 +9,7 @@
 | Сервис | URL | Логин / пароль | Что смотреть/учить |
 |---|---|---|---|
 | **MLflow** | http://mlflow.mlops.local | без логина | эксперименты, runs, метрики, артефакты моделей |
-| **Airflow** | http://airflow.mlops.local | `admin` / `admin` (дефолт чарта, лаба) | DAG-и, Grid view, логи задач, триггер руками |
+| **Airflow** | http://airflow.mlops.local | `admin` / из Vault (secret/mlops/airflow) | DAG-и, Grid view, логи задач, триггер руками |
 | **Grafana** | http://grafana.mlops.local | `admin` / см. ниже | дашборд «GPU / MLOps (as-code)», Explore+PromQL |
 | **Argo CD** | http://argocd.mlops.local | `admin` / см. ниже | приложения, Synced/OutOfSync, diff с git, Sync |
 | **Vault UI** | http://vault.mlops.local | Token: root-токен, см. ниже | Secrets Engines → `secret/` → `mlops/` |
