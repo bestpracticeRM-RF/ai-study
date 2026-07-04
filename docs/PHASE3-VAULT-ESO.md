@@ -53,6 +53,13 @@ ESO ходит НЕ root-токеном, а токеном с политикой
 Старый рукотворный `minio-creds` удалён → ESO пересоздал его из Vault (SecretSynced).
 `rollout restart` Triton — под перечитал секрет, модели снова READY.
 
+> 🪤 **Грабли single-GPU:** rollout завис — новый под Pending. Причина: GPU один,
+> старый под его держит, а RollingUpdate ждёт готовности нового = дедлок.
+> Фикс: `strategy: type: Recreate` в Deployment (старый убивается ДО создания нового).
+> Исправлено по-GitOps-овски: правка в git → push → Argo применил сам
+> (форс-рефреш: `kubectl annotate application triton -n argocd argocd.argoproj.io/refresh=normal`).
+> Цена Recreate — краткий даунтайм инференса; для single-GPU лабы неизбежно.
+
 ## Проверка здоровья
 ```bash
 kubectl exec -n vault vault-0 -- vault status            # Sealed: false
