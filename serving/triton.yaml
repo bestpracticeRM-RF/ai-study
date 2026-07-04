@@ -17,6 +17,8 @@ metadata:
   labels: { app: triton }
 spec:
   replicas: 1
+  strategy:
+    type: Recreate   # GPU один: RollingUpdate деадлочится (новый под ждёт GPU, старый его держит)
   selector:
     matchLabels: { app: triton }
   template:
