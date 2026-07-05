@@ -15,6 +15,7 @@
 | **Vault UI** | http://vault.mlops.local | Token: root-токен, см. ниже | Secrets Engines → `secret/` → `mlops/` |
 | **MinIO Console** | http://console.minio.mlops.local | root-креды: см. ниже | бакеты `mlflow-artifacts`, `triton-models` |
 | **JupyterHub** | http://jupyter.mlops.local | `admin` / из Vault (secret/mlops/jupyterhub) | ноутбуки в кластере, GPU-профиль (time-slicing) |
+| **GitLab** | http://gitlab.mlops.local | `root` / из Vault (secret/mlops/gitlab) | репо ai-study, CI-пайплайны, runner |
 | **Triton** | http://triton.mlops.local | API без UI | `/v2/health/ready`, `/v2/models/iris/config` |
 
 ## Команды для паролей (не хранить в файлах!)
