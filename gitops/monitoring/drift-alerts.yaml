@@ -1,0 +1,35 @@
+# Алерты на дрейф данных (Evidently -> vmsingle -> vmalert).
+# Смотреть: vmalert UI или Grafana. Receivers (telegram и т.п.) не настроены — лаба.
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: model-drift
+  namespace: monitoring
+spec:
+  groups:
+    - name: model-drift.rules
+      rules:
+        - alert: IrisDatasetDrift
+          expr: evidently_dataset_drift{dataset="iris"} == 1
+          labels:
+            severity: warning
+            team: mlops
+          annotations:
+            summary: "Дрейф данных Iris: датасет дрейфнул"
+            description: "Evidently зафиксировал dataset drift (share={{ $value }}). Проверить источники данных / переобучить модель."
+        - alert: IrisDriftShareHigh
+          expr: evidently_drift_share{dataset="iris"} > 0.5
+          labels:
+            severity: critical
+            team: mlops
+          annotations:
+            summary: "Дрейфнуло >50% фич Iris"
+            description: "share_of_drifted_columns = {{ $value }}. Модель почти наверняка деградировала."
+        - alert: GpuHot
+          expr: DCGM_FI_DEV_GPU_TEMP > 85
+          for: 5m
+          labels:
+            severity: critical
+            team: mlops
+          annotations:
+            summary: "GPU перегрев: {{ $value }}°C"

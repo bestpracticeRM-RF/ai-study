@@ -1,0 +1,62 @@
+# Дашборд «Model Monitoring» (Evidently) — as-code, подхватывает sidecar Grafana.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dashboard-model-monitoring
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  model-monitoring.json: |
+    {
+      "title": "Model Monitoring — Evidently (as-code)",
+      "uid": "model-monitoring",
+      "tags": ["mlops", "evidently", "drift", "as-code"],
+      "timezone": "browser",
+      "refresh": "1m",
+      "time": { "from": "now-24h", "to": "now" },
+      "panels": [
+        {
+          "type": "stat", "title": "Dataset Drift (0=нет, 1=ДРЕЙФ)",
+          "gridPos": {"h":6,"w":6,"x":0,"y":0},
+          "fieldConfig": {"defaults": {"thresholds": {"steps": [
+            {"color": "green", "value": null},
+            {"color": "red", "value": 1}
+          ]}}},
+          "targets": [{"expr": "evidently_dataset_drift{dataset=\"iris\"}"}]
+        },
+        {
+          "type": "gauge", "title": "Доля дрейфнувших фич",
+          "gridPos": {"h":6,"w":6,"x":6,"y":0},
+          "fieldConfig": {"defaults": {"unit": "percentunit", "max": 1, "min": 0,
+            "thresholds": {"steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 0.25},
+              {"color": "red", "value": 0.5}
+            ]}}},
+          "targets": [{"expr": "evidently_drift_share{dataset=\"iris\"}"}]
+        },
+        {
+          "type": "stat", "title": "Дрейфнувших фич (из 4)",
+          "gridPos": {"h":6,"w":6,"x":12,"y":0},
+          "targets": [{"expr": "evidently_drifted_features{dataset=\"iris\"}"}]
+        },
+        {
+          "type": "timeseries", "title": "Drift score по фичам (история)",
+          "gridPos": {"h":9,"w":24,"x":0,"y":6},
+          "targets": [{"expr": "evidently_feature_drift_score{dataset=\"iris\"}", "legendFormat": "{{feature}}"}]
+        },
+        {
+          "type": "timeseries", "title": "Drift share (история)",
+          "gridPos": {"h":8,"w":12,"x":0,"y":15},
+          "fieldConfig": {"defaults": {"unit": "percentunit", "max": 1}},
+          "targets": [{"expr": "evidently_drift_share{dataset=\"iris\"}", "legendFormat": "share"}]
+        },
+        {
+          "type": "table", "title": "Активные алерты (vmalert)",
+          "gridPos": {"h":8,"w":12,"x":12,"y":15},
+          "targets": [{"expr": "ALERTS{team=\"mlops\"}", "format": "table", "instant": true}]
+        }
+      ],
+      "schemaVersion": 39
+    }
