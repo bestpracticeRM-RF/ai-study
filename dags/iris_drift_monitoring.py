@@ -19,7 +19,8 @@ from __future__ import annotations
 import pendulum
 from airflow.decorators import dag, task
 
-PIP_REQS = ["evidently==0.6.7", "scikit-learn", "pandas"]
+# numpy>=2.1: первые wheels под python3.13 (без него uv тянет numpy 2.0.2 sdist -> нужен gcc, его нет в образе)
+PIP_REQS = ["evidently==0.6.7", "scikit-learn", "pandas", "numpy>=2.1"]
 VM_IMPORT = ("http://vmsingle-vm-stack-victoria-metrics-k8s-stack"
              ".monitoring.svc.cluster.local:8428/api/v1/import/prometheus")
 
