@@ -1,0 +1,62 @@
+# JupyterHub — обучающая станция. Паролей в файле НЕТ (в git можно):
+# пароль DummyAuthenticator приходит из k8s Secret jupyterhub-auth (ESO <- Vault secret/mlops/jupyterhub).
+hub:
+  config:
+    JupyterHub:
+      authenticator_class: dummy
+    Authenticator:
+      admin_users: ["admin"]
+  extraEnv:
+    DUMMY_PASSWORD:
+      valueFrom:
+        secretKeyRef:
+          name: jupyterhub-auth
+          key: password
+  extraConfig:
+    dummy-pass-from-vault: |
+      import os
+      c.DummyAuthenticator.password = os.environ["DUMMY_PASSWORD"]
+
+proxy:
+  service:
+    type: ClusterIP
+
+ingress:
+  enabled: true
+  ingressClassName: nginx
+  hosts: ["jupyter.mlops.local"]
+
+singleuser:
+  # дефолтный лёгкий образ; GPU-профиль тянет ~8GB при первом запуске
+  memory:
+    limit: 4G
+    guarantee: 1G
+  cpu:
+    limit: 2
+  storage:
+    capacity: 5Gi
+    dynamic:
+      storageClass: local-path
+  extraEnv:
+    MLFLOW_TRACKING_URI: http://mlflow.mlops-tracking.svc.cluster.local
+    MLFLOW_S3_ENDPOINT_URL: http://minio.mlops-infra.svc.cluster.local:9000
+  profileList:
+    - display_name: "CPU — базовый (по умолчанию)"
+      description: "Лёгкий scipy-ноутбук, без GPU"
+      default: true
+    - display_name: "GPU — PyTorch (time-sliced RTX 5070 Ti)"
+      description: "1 виртуальный GPU из 4. Первый запуск долгий (образ ~8GB)"
+      kubespawner_override:
+        image: quay.io/jupyter/pytorch-notebook:cuda12-python-3.12
+        extra_resource_limits:
+          nvidia.com/gpu: "1"
+
+# культура прод: не пускать во всё подряд
+scheduling:
+  userScheduler:
+    enabled: false   # single-node, не нужен
+prePuller:
+  hook:
+    enabled: false   # не тормозить установку прогревом образов
+  continuous:
+    enabled: false

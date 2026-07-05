@@ -1,0 +1,28 @@
+# Argo CD Application: JupyterHub (chart + values из git, секретов в values нет).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: jupyterhub
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://hub.jupyter.org/helm-chart/
+      chart: jupyterhub
+      targetRevision: 4.4.0
+      helm:
+        releaseName: jupyterhub
+        valueFiles:
+          - $values/jupyterhub-values.yaml
+    - repoURL: https://github.com/bestpracticeRM-RF/ai-study.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: jupyter
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: false   # сначала наблюдаем; включим после обкатки
+    syncOptions:
+      - CreateNamespace=true
