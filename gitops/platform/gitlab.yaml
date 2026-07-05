@@ -49,7 +49,6 @@ spec:
                 external_url 'http://gitlab.mlops.local'
                 # экономия RAM: выключаем лишнее для лабы
                 prometheus_monitoring['enable'] = false
-                grafana['enable'] = false
                 registry['enable'] = false
                 gitlab_kas['enable'] = false
                 sidekiq['max_concurrency'] = 5
