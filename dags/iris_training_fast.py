@@ -15,14 +15,20 @@ import pendulum
 from airflow.decorators import dag, task
 from kubernetes.client import models as k8s
 
-# Пин по SHA-тегу (immutable), НЕ :latest: KubernetesExecutor ставит
-# imagePullPolicy=IfNotPresent -> нода молча берёт кэшированный старый latest.
-TRAIN_IMAGE = "registry.mlops.local/mlops/train:6ee91b34"
+# :latest допустим ТОЛЬКО с pull_policy Always (иначе IfNotPresent берёт
+# протухший кэш ноды — ловили). В prod пинят SHA/digest.
+TRAIN_IMAGE = "registry.mlops.local/mlops/train:latest"
 
 train_pod = {
     "pod_override": k8s.V1Pod(
         spec=k8s.V1PodSpec(
-            containers=[k8s.V1Container(name="base", image=TRAIN_IMAGE)]
+            containers=[
+                k8s.V1Container(
+                    name="base",
+                    image=TRAIN_IMAGE,
+                    image_pull_policy="Always",
+                )
+            ]
         )
     )
 }
