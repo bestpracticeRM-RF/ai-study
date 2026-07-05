@@ -1,0 +1,30 @@
+# CI MLOps-платформы (GitLab Runner в k3s, kubernetes executor).
+# Пока: lint/валидация. Дальше: build train-образа (kaniko) + registry + деплой через Argo.
+stages:
+  - lint
+
+lint:dags:
+  stage: lint
+  image: python:3.12-slim
+  script:
+    - python -m py_compile dags/*.py
+    - echo "DAG syntax OK"
+
+lint:yaml:
+  stage: lint
+  image: python:3.12-slim
+  before_script:
+    - pip install -q pyyaml
+  script:
+    - |
+      python - <<'PY'
+      import glob, sys, yaml
+      bad = 0
+      for f in glob.glob("gitops/**/*.yaml", recursive=True) + glob.glob("serving/*.yaml") + ["airflow-values.yaml", "minio-values.yaml", "jupyterhub-values.yaml", "vault-values.yaml"]:
+          try:
+              list(yaml.safe_load_all(open(f)))
+              print("OK ", f)
+          except Exception as e:
+              print("FAIL", f, "->", e); bad += 1
+      sys.exit(1 if bad else 0)
+      PY
