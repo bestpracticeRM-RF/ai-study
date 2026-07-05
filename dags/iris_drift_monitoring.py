@@ -19,8 +19,9 @@ from __future__ import annotations
 import pendulum
 from airflow.decorators import dag, task
 
-# numpy>=2.1: первые wheels под python3.13 (без него uv тянет numpy 2.0.2 sdist -> нужен gcc, его нет в образе)
-PIP_REQS = ["evidently==0.6.7", "scikit-learn", "pandas", "numpy>=2.1"]
+# evidently>=0.7: старые 0.6.x требуют numpy<2.1, а под python3.13 wheels numpy
+# начинаются с 2.1 (в airflow-образе нет gcc для сборки sdist) -> только новый API 0.7+.
+PIP_REQS = ["evidently>=0.7,<0.9", "scikit-learn", "pandas", "numpy>=2.1"]
 VM_IMPORT = ("http://vmsingle-vm-stack-victoria-metrics-k8s-stack"
              ".monitoring.svc.cluster.local:8428/api/v1/import/prometheus")
 
@@ -36,14 +37,14 @@ VM_IMPORT = ("http://vmsingle-vm-stack-victoria-metrics-k8s-stack"
 def iris_drift_monitoring():
     @task.virtualenv(requirements=PIP_REQS, system_site_packages=False)
     def drift_report(inject_drift: bool, vm_import_url: str) -> dict:
-        """Посчитать дрейф Evidently и запушить метрики в VictoriaMetrics."""
+        """Посчитать дрейф Evidently (API 0.7+) и запушить метрики в VictoriaMetrics."""
         import json
+        import re
         import urllib.request
 
         import numpy as np
-        import pandas as pd
-        from evidently.report import Report
-        from evidently.metric_preset import DataDriftPreset
+        from evidently import Report
+        from evidently.presets import DataDriftPreset
         from sklearn.datasets import load_iris
 
         data = load_iris(as_frame=True)
@@ -57,38 +58,42 @@ def iris_drift_monitoring():
             cur["sepal length (cm)"] += 1.5
             cur["petal width (cm)"] *= 1.8
 
-        report = Report(metrics=[DataDriftPreset()])
-        report.run(reference_data=ref, current_data=cur)
-        rd = report.as_dict()
+        snapshot = Report([DataDriftPreset()]).run(
+            reference_data=ref, current_data=cur)
+        rd = snapshot.dict()
 
-        summary = next(m for m in rd["metrics"]
-                       if m["metric"] == "DatasetDriftMetric")["result"]
-        table = next(m for m in rd["metrics"]
-                     if m["metric"] == "DataDriftTable")["result"]
+        share, count = 0.0, 0
+        feature_scores = {}
+        for m in rd.get("metrics", []):
+            mid = m.get("metric_id", "")
+            val = m.get("value")
+            if mid.startswith("DriftedColumnsCount"):
+                count = int(val.get("count", 0))
+                share = float(val.get("share", 0.0))
+            elif mid.startswith("ValueDrift(column="):
+                feat = re.search(r"column=([^)]+)", mid).group(1)
+                f = feat.replace(" (cm)", "").replace(" ", "_")
+                feature_scores[f] = float(val)
 
+        dataset_drift = int(share >= 0.5)  # порог evidently по умолчанию
         lines = [
-            f'evidently_dataset_drift{{dataset="iris"}} {int(summary["dataset_drift"])}',
-            f'evidently_drift_share{{dataset="iris"}} {summary["share_of_drifted_columns"]:.4f}',
-            f'evidently_drifted_features{{dataset="iris"}} {summary["number_of_drifted_columns"]}',
+            f'evidently_dataset_drift{{dataset="iris"}} {dataset_drift}',
+            f'evidently_drift_share{{dataset="iris"}} {share:.4f}',
+            f'evidently_drifted_features{{dataset="iris"}} {count}',
         ]
-        for feat, info in table["drift_by_columns"].items():
-            f = feat.replace(" (cm)", "").replace(" ", "_")
+        for f, score in feature_scores.items():
             lines.append(
                 f'evidently_feature_drift_score{{dataset="iris",feature="{f}"}} '
-                f'{info["drift_score"]:.6f}')
-            lines.append(
-                f'evidently_feature_drift_detected{{dataset="iris",feature="{f}"}} '
-                f'{int(info["drift_detected"])}')
+                f'{score:.6f}')
 
         body = ("\n".join(lines) + "\n").encode()
         req = urllib.request.Request(vm_import_url, data=body, method="POST")
         with urllib.request.urlopen(req, timeout=30) as resp:
             code = resp.status
         print(f"pushed {len(lines)} metrics, HTTP {code}")
-        print(json.dumps({"dataset_drift": summary["dataset_drift"],
-                          "share": summary["share_of_drifted_columns"]}))
-        return {"dataset_drift": bool(summary["dataset_drift"]),
-                "share": float(summary["share_of_drifted_columns"])}
+        print(json.dumps({"dataset_drift": dataset_drift, "share": share,
+                          "drifted": count, "features": feature_scores}))
+        return {"dataset_drift": bool(dataset_drift), "share": share}
 
     @task
     def report_status(res: dict) -> None:
