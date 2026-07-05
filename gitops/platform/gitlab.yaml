@@ -47,6 +47,9 @@ spec:
             - name: GITLAB_OMNIBUS_CONFIG
               value: |
                 external_url 'http://gitlab.mlops.local'
+                # health-эндпоинты (/-/readiness) отдают 404 не-whitelisted IP:
+                # пробы kubelet ходят с IP ноды/пода -> пускаем pod-CIDR k3s
+                gitlab_rails['monitoring_whitelist'] = ['127.0.0.0/8', '10.42.0.0/16', '10.43.0.0/16']
                 # экономия RAM: выключаем лишнее для лабы
                 prometheus_monitoring['enable'] = false
                 registry['enable'] = false
