@@ -62,18 +62,22 @@ def iris_drift_monitoring():
             reference_data=ref, current_data=cur)
         rd = snapshot.dict()
 
+        print("metric_ids:", [m.get("metric_id") for m in rd.get("metrics", [])])
         share, count = 0.0, 0
         feature_scores = {}
         for m in rd.get("metrics", []):
             mid = m.get("metric_id", "")
             val = m.get("value")
             if mid.startswith("DriftedColumnsCount"):
-                count = int(val.get("count", 0))
+                count = int(float(val.get("count", 0)))
                 share = float(val.get("share", 0.0))
-            elif mid.startswith("ValueDrift(column="):
-                feat = re.search(r"column=([^)]+)", mid).group(1)
-                f = feat.replace(" (cm)", "").replace(" ", "_")
-                feature_scores[f] = float(val)
+            elif "ValueDrift" in mid and "column=" in mid:
+                feat = re.search(r"column=(.+?)(?:,|\)$)", mid).group(1)
+                f = feat.replace(" (cm)", "").replace(" ", "_").strip()
+                try:
+                    feature_scores[f] = float(val)
+                except (TypeError, ValueError):
+                    print(f"skip {mid}: value={val!r}")
 
         dataset_drift = int(share >= 0.5)  # порог evidently по умолчанию
         lines = [
