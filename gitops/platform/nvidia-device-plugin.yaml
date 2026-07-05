@@ -1,0 +1,77 @@
+# NVIDIA device plugin + GPU time-slicing.
+# Было: raw-манифест вне git (GPU=1, целиком у Triton). Теперь Argo владеет.
+# Time-slicing: одна RTX 5070 Ti видна как 4 x nvidia.com/gpu — Triton и
+# Jupyter-ноутбуки шедулятся одновременно. Изоляции памяти НЕТ (лаба!) —
+# процессы делят VRAM 16GB, следить через DCGM-дашборд.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nvidia-device-plugin-config
+  namespace: kube-system
+data:
+  config.yaml: |
+    version: v1
+    flags:
+      migStrategy: none
+    sharing:
+      timeSlicing:
+        renameByDefault: false
+        failRequestsGreaterThanOne: false
+        resources:
+          - name: nvidia.com/gpu
+            replicas: 4
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nvidia-device-plugin-daemonset
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      name: nvidia-device-plugin-ds
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        name: nvidia-device-plugin-ds
+    spec:
+      priorityClassName: system-node-critical
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: nvidia-device-plugin-ctr
+          image: nvcr.io/nvidia/k8s-device-plugin:v0.17.0
+          args:
+            - --config-file=/etc/nvidia/config.yaml
+          env:
+            - name: FAIL_ON_INIT_ERROR
+              value: "false"
+            - name: DEVICE_DISCOVERY_STRATEGY
+              value: nvml
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: device-plugin
+              mountPath: /var/lib/kubelet/device-plugins
+            - name: cdi
+              mountPath: /etc/cdi
+              readOnly: true
+            - name: plugin-config
+              mountPath: /etc/nvidia
+              readOnly: true
+      volumes:
+        - name: device-plugin
+          hostPath:
+            path: /var/lib/kubelet/device-plugins
+        - name: cdi
+          hostPath:
+            path: /etc/cdi
+        - name: plugin-config
+          configMap:
+            name: nvidia-device-plugin-config
