@@ -11,7 +11,8 @@ RUN pip install --no-cache-dir \
     "numpy>=2.1" \
     boto3
 
-# airflow task-runner требует пакет apache-airflow в образе для @task
-RUN pip install --no-cache-dir "apache-airflow==3.2.0" apache-airflow-providers-cncf-kubernetes
+# airflow task-runner требует пакет apache-airflow в образе для @task;
+# psycopg2 — task-под инициализирует ORM по env AIRFLOW__DATABASE__* (postgres)
+RUN pip install --no-cache-dir "apache-airflow==3.2.0" apache-airflow-providers-cncf-kubernetes psycopg2-binary
 
 WORKDIR /app
