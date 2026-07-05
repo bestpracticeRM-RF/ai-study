@@ -2,6 +2,7 @@
 # Пока: lint/валидация. Дальше: build train-образа (kaniko) + registry + деплой через Argo.
 stages:
   - lint
+  - build
 
 lint:dags:
   stage: lint
@@ -28,3 +29,22 @@ lint:yaml:
               print("FAIL", f, "->", e); bad += 1
       sys.exit(1 if bad else 0)
       PY
+
+# Сборка train-образа: kaniko (докер-демон не нужен), push в registry кластера.
+# push -> svc-адрес (kaniko в поде, hosts-домены не резолвятся); pull нодой -> registry.mlops.local (registries.yaml).
+build:train:
+  stage: build
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  script:
+    - /kaniko/executor
+      --context "${CI_PROJECT_DIR}"
+      --dockerfile "${CI_PROJECT_DIR}/dockerfiles/train/Dockerfile"
+      --destination "registry.gitlab.svc.cluster.local:5000/mlops/train:${CI_COMMIT_SHORT_SHA}"
+      --destination "registry.gitlab.svc.cluster.local:5000/mlops/train:latest"
+      --insecure
+  rules:
+    - changes:
+        - dockerfiles/**/*
+        - .gitlab-ci.yml
