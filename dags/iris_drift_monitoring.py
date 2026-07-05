@@ -39,7 +39,6 @@ def iris_drift_monitoring():
     def drift_report(inject_drift: bool, vm_import_url: str) -> dict:
         """Посчитать дрейф Evidently (API 0.7+) и запушить метрики в VictoriaMetrics."""
         import json
-        import re
         import urllib.request
 
         import numpy as np
@@ -62,22 +61,23 @@ def iris_drift_monitoring():
             reference_data=ref, current_data=cur)
         rd = snapshot.dict()
 
-        print("metric_ids:", [m.get("metric_id") for m in rd.get("metrics", [])])
+        # Формат evidently 0.7.x: у каждой метрики "metric_name" (не metric_id),
+        # имя колонки — в config.column. ValueDrift value = p-value (мало => дрейф).
         share, count = 0.0, 0
         feature_scores = {}
         for m in rd.get("metrics", []):
-            mid = m.get("metric_id", "")
+            name = m.get("metric_name", "")
             val = m.get("value")
-            if mid.startswith("DriftedColumnsCount"):
+            if name.startswith("DriftedColumnsCount"):
                 count = int(float(val.get("count", 0)))
                 share = float(val.get("share", 0.0))
-            elif "ValueDrift" in mid and "column=" in mid:
-                feat = re.search(r"column=(.+?)(?:,|\)$)", mid).group(1)
-                f = feat.replace(" (cm)", "").replace(" ", "_").strip()
+            elif name.startswith("ValueDrift"):
+                col = (m.get("config") or {}).get("column") or "unknown"
+                f = col.replace(" (cm)", "").replace(" ", "_").strip()
                 try:
                     feature_scores[f] = float(val)
                 except (TypeError, ValueError):
-                    print(f"skip {mid}: value={val!r}")
+                    print(f"skip {name}: value={val!r}")
 
         dataset_drift = int(share >= 0.5)  # порог evidently по умолчанию
         lines = [
