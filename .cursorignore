@@ -1,0 +1,60 @@
+# Cursor index/search ignore — меньше шума в @codebase и авто-поиске
+# Синтаксис как .gitignore. Не влияет на git.
+
+# Бинарники и модели (в MinIO / prepare_models.py)
+serving/model_repository/**/1/
+**/*.onnx
+**/*.pb
+**/*.pt
+**/*.pth
+**/*.safetensors
+
+# Данные
+data/
+*.csv
+.dvc/cache/
+.dvc/tmp/
+
+# Python / IDE
+venv/
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.pytest_cache/
+.mypy_cache/
+
+# Секреты и локальные values (есть *.example.yaml)
+docs/ACCESS-local.md
+mlflow-values.yaml
+**/ACCESS-local.md
+**/*.local.yaml
+**/*.local.json
+.env
+.env.*
+
+# Артефакты и мусор
+packages.microsoft.gpg
+*.gpg
+*.deb
+*.rpm
+*.zip
+*.tar.gz
+*.tgz
+
+# Git / CI кэш
+.git/
+**/.git/
+
+# Большие helm chart dumps (если появятся)
+mlflow/
+charts/
+
+# История промптов — не для индексации агентом
+agent.md
+
+# Сжатые бэкапы memory-файлов
+*.original.md
+
+# Логи
+*.log
