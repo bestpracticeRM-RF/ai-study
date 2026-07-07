@@ -1,0 +1,65 @@
+# Kafka кластер (Strimzi, KRaft mode, 1 broker) + темы для real-time inference.
+# KRaft: секции `zookeeper` нет -> Strimzi 1.x автоматически поднимает KRaft
+# (controller listener Strimzi создаёт сам). 1 узел => RF=1 везде.
+# NB: применять ТОЛЬКО после старта оператора (CRD Kafka/KafkaTopic должны существовать).
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: kafka-cluster
+  namespace: kafka
+spec:
+  kafka:
+    replicas: 1
+    version: 4.0.0
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+    storage:
+      type: persistent-claim
+      size: 10Gi
+      deleteClaim: false
+    resources:
+      requests: { memory: 1Gi, cpu: 250m }
+      limits:   { memory: 1500Mi, cpu: 1000m }
+    jvmOptions:
+      -Xms: 512m
+      -Xmx: 512m
+    config:
+      # 1 broker: все replication factors = 1, иначе темы не создадутся.
+      offsets.topic.replication.factor: 1
+      transaction.state.log.replication.factor: 1
+      transaction.state.log.min.isr: 1
+      default.replication.factor: 1
+      min.insync.replicas: 1
+  # Entity operator создаёт Topic/User CR. Оставляем — нужен для KafkaTopic ниже.
+  entityOperator:
+    topic: {}
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: iris-requests
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: kafka-cluster
+spec:
+  partitions: 1
+  replicas: 1
+  config:
+    retention.ms: 86400000       # 24 ч — для демо
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: iris-responses
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: kafka-cluster
+spec:
+  partitions: 1
+  replicas: 1
+  config:
+    retention.ms: 86400000

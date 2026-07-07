@@ -1,0 +1,25 @@
+# Argo CD Application: сам Kafka-кластер (Kafka CR + topics).
+# Применять ПОСЛЕ kafka-operator (нужны CRD kafka.strimzi.io/*).
+# Bootstrap-порядок:
+#   1. kubectl apply -f gitops/apps/kafka-operator.yaml ; дождаться Ready operator pod
+#   2. kubectl apply -f gitops/apps/kafka.yaml          ; дождаться Ready Kafka
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kafka-cluster
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/bestpracticeRM-RF/ai-study.git
+    targetRevision: main
+    path: gitops/kafka
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kafka
+  syncPolicy:
+    automated:
+      prune: false      # stateful (broker PVC) — без авто-удалений
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

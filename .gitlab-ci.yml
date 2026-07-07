@@ -46,5 +46,25 @@ build:train:
       --insecure
   rules:
     - changes:
-        - dockerfiles/**/*
+        - dockerfiles/train/**/*
+        - .gitlab-ci.yml
+
+# Сборка образа Kafka-консьюмера (real-time inference): Kaniko -> registry кластера.
+# Триггер: правки в dockerfiles/consumer/ или в serving/kafka_consumer.py (копируется в образ).
+build:consumer:
+  stage: build
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  script:
+    - /kaniko/executor
+      --context "${CI_PROJECT_DIR}"
+      --dockerfile "${CI_PROJECT_DIR}/dockerfiles/consumer/Dockerfile"
+      --destination "registry.gitlab.svc.cluster.local:5000/mlops/kafka-consumer:${CI_COMMIT_SHORT_SHA}"
+      --destination "registry.gitlab.svc.cluster.local:5000/mlops/kafka-consumer:latest"
+      --insecure
+  rules:
+    - changes:
+        - dockerfiles/consumer/**/*
+        - serving/kafka_consumer.py
         - .gitlab-ci.yml
