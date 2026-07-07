@@ -1,32 +1,46 @@
-# Kafka кластер (Strimzi, KRaft mode, 1 broker) + темы для real-time inference.
-# KRaft: секции `zookeeper` нет -> Strimzi 1.x автоматически поднимает KRaft
-# (controller listener Strimzi создаёт сам). 1 узел => RF=1 везде.
-# NB: применять ТОЛЬКО после старта оператора (CRD Kafka/KafkaTopic должны существовать).
+# Kafka кластер (Strimzi 1.x, API kafka.strimzi.io/v1, KRaft) + темы для real-time inference.
+# Strimzi 1.x: ZooKeeper удалён, KRaft всегда; replicas/storage задаются ТОЛЬКО через KafkaNodePool
+# (spec.kafka.replicas/storage из v1beta2 больше не существуют).
+# 1 узел dual-role (controller+broker) => RF=1 везде.
+# NB: применять ТОЛЬКО после старта оператора (CRD kafka.strimzi.io/v1 должны существовать).
 ---
-apiVersion: kafka.strimzi.io/v1beta2
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaNodePool
+metadata:
+  name: dual-role
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: kafka-cluster
+spec:
+  replicas: 1
+  roles:
+    - controller
+    - broker
+  storage:
+    type: persistent-claim
+    size: 10Gi
+    deleteClaim: false
+  resources:
+    requests: { memory: 1Gi, cpu: 250m }
+    limits:   { memory: 1500Mi, cpu: 1000m }
+  jvmOptions:
+    -Xms: 512m
+    -Xmx: 512m
+---
+apiVersion: kafka.strimzi.io/v1
 kind: Kafka
 metadata:
   name: kafka-cluster
   namespace: kafka
 spec:
   kafka:
-    replicas: 1
-    version: 4.0.0
+    # Strimzi 1.1.0 поддерживает только 4.2.0/4.2.1/4.3.0
+    version: 4.3.0
     listeners:
       - name: plain
         port: 9092
         type: internal
         tls: false
-    storage:
-      type: persistent-claim
-      size: 10Gi
-      deleteClaim: false
-    resources:
-      requests: { memory: 1Gi, cpu: 250m }
-      limits:   { memory: 1500Mi, cpu: 1000m }
-    jvmOptions:
-      -Xms: 512m
-      -Xmx: 512m
     config:
       # 1 broker: все replication factors = 1, иначе темы не создадутся.
       offsets.topic.replication.factor: 1
@@ -35,10 +49,11 @@ spec:
       default.replication.factor: 1
       min.insync.replicas: 1
   # Entity operator создаёт Topic/User CR. Оставляем — нужен для KafkaTopic ниже.
+  # v1: поле называется topicOperator (в v1beta2 было topic).
   entityOperator:
-    topic: {}
+    topicOperator: {}
 ---
-apiVersion: kafka.strimzi.io/v1beta2
+apiVersion: kafka.strimzi.io/v1
 kind: KafkaTopic
 metadata:
   name: iris-requests
@@ -51,7 +66,7 @@ spec:
   config:
     retention.ms: 86400000       # 24 ч — для демо
 ---
-apiVersion: kafka.strimzi.io/v1beta2
+apiVersion: kafka.strimzi.io/v1
 kind: KafkaTopic
 metadata:
   name: iris-responses
